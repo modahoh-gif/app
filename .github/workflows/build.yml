@@ -9,6 +9,7 @@ jobs:
         run: |
           mkdir -p Sources/BitcoinLive
           
+          # إنشاء ملف BitcoinAttributes.swift
           cat << 'EOF' > Sources/BitcoinLive/BitcoinAttributes.swift
           import ActivityKit
           import Foundation
@@ -23,6 +24,7 @@ jobs:
           }
           EOF
 
+          # إنشاء ملف BitcoinManager.swift
           cat << 'EOF' > Sources/BitcoinLive/BitcoinManager.swift
           import Foundation
           import ActivityKit
@@ -87,7 +89,17 @@ jobs:
           }
           EOF
 
-          # تعديل الحزمة لتكون Executable منتجة لملف تنفيذي
+          # إضافة ملف main.swift لحل مشكلة الـ Linker والـ Entry Point
+          cat << 'EOF' > Sources/BitcoinLive/main.swift
+          import Foundation
+
+          print("BitcoinLive daemon starting...")
+          let manager = BitcoinManager()
+          manager.start()
+          RunLoop.main.run()
+          EOF
+
+          # تحديث ملف Package.swift
           cat << 'EOF' > Package.swift
           // swift-tools-version: 5.8
           import PackageDescription
@@ -98,16 +110,20 @@ jobs:
                   .executable(name: "BitcoinLive", targets: ["BitcoinLive"])
               ],
               targets: [
-                  .executableTarget(name: "BitcoinLive", path: "Sources/BitcoinLive")
+                  .executableTarget(
+                      name: "BitcoinLive",
+                      path: "Sources/BitcoinLive",
+                      linkerSettings: [.linkedFramework("ActivityKit"), .linkedFramework("AVFoundation")]
+                  )
               ]
           )
           EOF
 
-          # بناء التطبيق كملف تنفيذي حقيقي
-          swift build -c release --sdk $(xcrun --sdk iphoneos --show-sdk-path) -Xswiftc -target -Xswiftc arm64-apple-ios16.2
+          # بناء التطبيق مع تحديد الـ SDK والـ Target بدقة لمنع خطأ الماكنتوش
+          swift build -c release --sdk "$(xcrun --sdk iphoneos --show-sdk-path)" -Xswiftc -target -Xswiftc arm64-apple-ios16.2
           
           mkdir -p Payload/BitcoinLive.app
-          cp -f .build/release/BitcoinLive Payload/BitcoinLive.app/BitcoinLive
+          cp -f .build/arm64-apple-ios/release/BitcoinLive Payload/BitcoinLive.app/BitcoinLive || cp -f .build/release/BitcoinLive Payload/BitcoinLive.app/BitcoinLive
           
           cat << 'EOF' > Payload/BitcoinLive.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
