@@ -5,22 +5,54 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Build App Directly
+      - name: Build with Swift Package
         run: |
-          swift package init --type application || true
-          # إنشاء مشروع خفيف وملف Xcode مباشرة بدون تعقيد
-          cat << 'EOF' > generate_project.swift
-          import Foundation
-          // سيتم تجميع الملفات مباشرة عبر xcodebuild
+          # تجهيز هيكل التطبيق وبناء الملفات البرمجية مباشرة
+          mkdir -p Sources/BitcoinLive
+          cp -R App/* Sources/BitcoinLive/ || true
+          
+          # إنشاء ملف Package.swift خفيف
+          cat << 'EOF' > Package.swift
+          // swift-tools-version: 5.8
+          import PackageDescription
+          let package = Package(
+              name: "BitcoinLive",
+              platforms: [.iOS(.v16)],
+              products: [.library(name: "BitcoinLive", targets: ["BitcoinLive"])],
+              targets: [.target(name: "BitcoinLive", path: "Sources/BitcoinLive")]
+          )
           EOF
           
-          xcodebuild -newXcodeProject -name BitcoinLive -target BitcoinLive -sdk iphoneos -configuration Release -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" || true
+          # بناء التطبيق واستخراج الـ IPA
+          swift build -c release --sdk $(xcrun --sdk iphoneos --show-sdk-path) -Xswiftc -target -Xswiftc arm64-apple-ios16.2
           
-          # بناء مباشر للملفات الموجودة في مجلد App
-          xcodebuild -project BitcoinLive.xcodeproj -scheme BitcoinLive -sdk iphoneos -configuration Release archive -archivePath build/App.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=""
+          mkdir -p Payload/BitcoinLive.app
+          cp -f .build/release/BitcoinLive Payload/BitcoinLive.app/BitcoinLive
           
-          mkdir -p Payload
-          cp -r build/App.xcarchive/Products/Applications/*.app Payload/
+          # ملف Info.plist أساسي لتشغيل التطبيق
+          cat << 'EOF' > Payload/BitcoinLive.app/Info.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.plist">
+          <plist version="1.0">
+          dict>
+              <key>CFBundleIdentifier</key>
+              <string>com.bitcoin.live</string>
+              <key>CFBundleName</key>
+              <string>BitcoinLive</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>MinimumOSVersion</key>
+              <string>16.2</string>
+              <key>UIBackgroundModes</key>
+              <array>
+                  <string>audio</string>
+              </array>
+          </dict>
+          </plist>
+          EOF
+          
           zip -r app.ipa Payload
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
