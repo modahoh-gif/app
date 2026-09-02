@@ -29,6 +29,7 @@ jobs:
           import AVFoundation
 
           public class BitcoinManager: ObservableObject {
+              @Published public var currentPrice: String = "Connecting..."
               private var webSocket: URLSessionWebSocketTask?
               private var engine = AVAudioEngine()
               private var player = AVAudioPlayerNode()
@@ -76,6 +77,9 @@ jobs:
                              let priceStr = json["c"] as? String {
                               let doublePrice = Double(priceStr) ?? 0
                               let formattedPrice = String(format: "$%.1f", doublePrice)
+                              DispatchQueue.main.async {
+                                  self?.currentPrice = formattedPrice
+                              }
                               Task { await self?.activity?.update(ActivityContent(state: .init(price: formattedPrice), staleDate: nil)) }
                           }
                           self?.receiveMessage()
@@ -87,13 +91,52 @@ jobs:
           }
           EOF
 
+          # استبدال الـ main.swift بواجهة SwiftUI حقيقية تمنع الشاشة السوداء
           cat << 'EOF' > Sources/BitcoinLive/main.swift
-          import Foundation
+          import SwiftUI
 
-          print("BitcoinLive daemon starting...")
-          let manager = BitcoinManager()
-          manager.start()
-          RunLoop.main.run()
+          @AppStorage("isStarted") var autoStart = false
+
+          struct ContentView: View {
+              @StateObject var manager = BitcoinManager()
+
+              var body: some View {
+                  ZStack {
+                      Color.black.ignoresSafeArea()
+                      VStack(spacing: 20) {
+                          Text("Bitcoin Live Tracker")
+                              .font(.largeTitle)
+                              .bold()
+                              .foregroundColor(.white)
+                          
+                          Text(manager.currentPrice)
+                              .font(.system(size: 40, weight: .bold))
+                              .foregroundColor(.green)
+                          
+                          Button(action: {
+                              manager.start()
+                          }) {
+                              Text("Start Live Activity & Audio")
+                                  .font(.headline)
+                                  .padding()
+                                  .background(Color.orange)
+                                  .foregroundColor(.white)
+                                  .cornerRadius(12)
+                          }
+                      }
+                      .padding()
+                  }
+              }
+          }
+
+          @main
+          struct AppMain: App {
+              var body: some Scene {
+                  WindowGroup {
+                      ContentView()
+                  }
+              }
+          }
           EOF
 
           cat << 'EOF' > Package.swift
@@ -109,7 +152,7 @@ jobs:
                   .executableTarget(
                       name: "BitcoinLive",
                       path: "Sources/BitcoinLive",
-                      linkerSettings: [.linkedFramework("ActivityKit"), .linkedFramework("AVFoundation")]
+                      linkerSettings: [.linkedFramework("ActivityKit"), .linkedFramework("AVFoundation"), .linkedFramework("SwiftUI")]
                   )
               ]
           )
