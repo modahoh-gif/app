@@ -5,13 +5,92 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Build with Swift Package
+      - name: Create and Build Everything
         run: |
-          # تجهيز هيكل التطبيق وبناء الملفات البرمجية مباشرة
+          # 1. إنشاء هيكل المجلدات والملفات تلقائياً
           mkdir -p Sources/BitcoinLive
-          cp -R App/* Sources/BitcoinLive/ || true
           
-          # إنشاء ملف Package.swift خفيف
+          # إنشاء ملف BitcoinAttributes.swift
+          cat << 'EOF' > Sources/BitcoinLive/BitcoinAttributes.swift
+          import ActivityKit
+          import Foundation
+
+          public struct BitcoinAttributes: ActivityAttributes {
+              public struct ContentState: Codable, Hashable {
+                  public var price: String
+                  public init(price: String) { self.price = price }
+              }
+              public var pair: String
+              public init(pair: String) { self.pair = pair }
+          }
+          EOF
+
+          # إنشاء ملف BitcoinManager.swift
+          cat << 'EOF' > Sources/BitcoinLive/BitcoinManager.swift
+          import Foundation
+          import ActivityKit
+          import AVFoundation
+
+          public class BitcoinManager: ObservableObject {
+              private var webSocket: URLSessionWebSocketTask?
+              private var engine = AVAudioEngine()
+              private var player = AVAudioPlayerNode()
+              private var activity: Activity<BitcoinAttributes>?
+
+              public init() {}
+
+              public func start() {
+                  startSilentAudio()
+                  startActivity()
+                  connectWebSocket()
+              }
+
+              private func startSilentAudio() {
+                  try? AVAudioSession.sharedInstance().setCategory(.playback, options: .mixWithOthers)
+                  try? AVAudioSession.sharedInstance().setActive(true)
+                  engine.attach(player)
+                  let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!
+                  engine.connect(player, to: engine.mainMixerNode, format: format)
+                  try? engine.start()
+                  player.play()
+              }
+
+              private func startActivity() {
+                  let attributes = BitcoinAttributes(pair: "BTC/USDT")
+                  let initialState = BitcoinAttributes.ContentState(price: "Connecting...")
+                  let content = ActivityContent(state: initialState, staleDate: nil)
+                  activity = try? Activity.request(attributes: attributes, content: content)
+              }
+
+              private func connectWebSocket() {
+                  let url = URL(string: "wss://stream.binance.com:9443/ws/btcusdt@ticker")!
+                  webSocket = URLSession.shared.webSocketTask(with: url)
+                  webSocket?.resume()
+                  receiveMessage()
+              }
+
+              private func receiveMessage() {
+                  webSocket?.receive { [weak self] result in
+                      switch result {
+                      case .success(let message):
+                          if case .string(let text) = message,
+                             let data = text.data(using: .utf8),
+                             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                             let priceStr = json["c"] as? String {
+                              let doublePrice = Double(priceStr) ?? 0
+                              let formattedPrice = String(format: "$%.1f", doublePrice)
+                              Task { await self?.activity?.update(ActivityContent(state: .init(price: formattedPrice), staleDate: nil)) }
+                          }
+                          self?.receiveMessage()
+                      case .failure:
+                          DispatchQueue.main.asyncAfter(deadline: .now() + 2) { self?.connectWebSocket() }
+                      }
+                  }
+              }
+          }
+          EOF
+
+          # إنشاء ملف Package.swift
           cat << 'EOF' > Package.swift
           // swift-tools-version: 5.8
           import PackageDescription
@@ -22,19 +101,19 @@ jobs:
               targets: [.target(name: "BitcoinLive", path: "Sources/BitcoinLive")]
           )
           EOF
-          
-          # بناء التطبيق واستخراج الـ IPA
+
+          # 2. بناء التطبيق
           swift build -c release --sdk $(xcrun --sdk iphoneos --show-sdk-path) -Xswiftc -target -Xswiftc arm64-apple-ios16.2
           
+          # 3. إعداد مجلد الـ IPA وملف الـ Info.plist
           mkdir -p Payload/BitcoinLive.app
           cp -f .build/release/BitcoinLive Payload/BitcoinLive.app/BitcoinLive
           
-          # ملف Info.plist أساسي لتشغيل التطبيق
           cat << 'EOF' > Payload/BitcoinLive.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.plist">
           <plist version="1.0">
-          dict>
+          <dict>
               <key>CFBundleIdentifier</key>
               <string>com.bitcoin.live</string>
               <key>CFBundleName</key>
