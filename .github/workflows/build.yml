@@ -9,7 +9,6 @@ jobs:
         run: |
           mkdir -p Sources/BitcoinLive
           
-          # إنشاء ملف BitcoinAttributes.swift
           cat << 'EOF' > Sources/BitcoinLive/BitcoinAttributes.swift
           import ActivityKit
           import Foundation
@@ -24,7 +23,6 @@ jobs:
           }
           EOF
 
-          # إنشاء ملف BitcoinManager.swift
           cat << 'EOF' > Sources/BitcoinLive/BitcoinManager.swift
           import Foundation
           import ActivityKit
@@ -89,7 +87,6 @@ jobs:
           }
           EOF
 
-          # إضافة ملف main.swift لحل مشكلة الـ Linker والـ Entry Point
           cat << 'EOF' > Sources/BitcoinLive/main.swift
           import Foundation
 
@@ -99,7 +96,6 @@ jobs:
           RunLoop.main.run()
           EOF
 
-          # تحديث ملف Package.swift
           cat << 'EOF' > Package.swift
           // swift-tools-version: 5.8
           import PackageDescription
@@ -119,7 +115,6 @@ jobs:
           )
           EOF
 
-          # بناء التطبيق مع تحديد الـ SDK والـ Target بدقة لمنع خطأ الماكنتوش
           swift build -c release --sdk "$(xcrun --sdk iphoneos --show-sdk-path)" -Xswiftc -target -Xswiftc arm64-apple-ios16.2
           
           mkdir -p Payload/BitcoinLive.app
@@ -133,6 +128,8 @@ jobs:
               <key>CFBundleIdentifier</key>
               <string>com.bitcoin.live</string>
               <key>CFBundleName</key>
+              <string>BitcoinLive</string>
+              <key>CFBundleExecutable</key>
               <string>BitcoinLive</string>
               <key>CFBundlePackageType</key>
               <string>APPL</string>
