@@ -1,17 +1,21 @@
 name: BitcoinLive
 options:
-  bundleIdPrefix: com.yourname
+  bundleIdPrefix: com.bitcoin
 targets:
   BitcoinLive:
     type: application
     platform: iOS
     deploymentTarget: "16.2"
     sources: [App]
+    settings:
+      CODE_SIGN_STYLE: Manual
+      CODE_SIGN_IDENTITY: ""
+      PROVISIONING_PROFILE_SPECIFIER: ""
     info:
       properties:
         UIBackgroundModes: [audio]
         NSSupportsLiveActivities: true
-  BitcoinWidget:
+  BitcoinLiveExtension:
     type: app-extension
     platform: iOS
     deploymentTarget: "16.2"
