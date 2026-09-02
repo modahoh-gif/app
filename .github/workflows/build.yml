@@ -1,4 +1,4 @@
-name: Build My App
+name: Build IPA
 on: workflow_dispatch
 jobs:
   build:
@@ -9,14 +9,14 @@ jobs:
         run: brew install xcodegen
       - name: Generate Project
         run: xcodegen generate
-      - name: Build IPA
+      - name: Build Archive
         run: |
-          xcodebuild -project BitcoinLive.xcodeproj -scheme BitcoinLive -sdk iphoneos -configuration Release archive -archivePath build/App.xcarchive CODE_SIGNING_ALLOWED=NO
-          mkdir Payload
+          xcodebuild -project BitcoinLive.xcodeproj -scheme BitcoinLive -sdk iphoneos -configuration Release archive -archivePath build/App.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=""
+          mkdir -p Payload
           cp -r build/App.xcarchive/Products/Applications/*.app Payload/
           zip -r app.ipa Payload
-      - name: Upload Output
+      - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: MyBitcoinApp
+          name: BitcoinLiveApp
           path: app.ipa
