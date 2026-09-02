@@ -6,7 +6,8 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "16.2"
-    sources: [App]
+    sources:
+      - path: App
     settings:
       CODE_SIGN_STYLE: Manual
       CODE_SIGN_IDENTITY: ""
@@ -19,7 +20,8 @@ targets:
     type: app-extension
     platform: iOS
     deploymentTarget: "16.2"
-    sources: [Widget]
+    sources:
+      - path: Widget
     info:
       properties:
         NSExtension:
