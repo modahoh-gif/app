@@ -16,7 +16,7 @@ jobs:
           cp -r build/App.xcarchive/Products/Applications/*.app Payload/
           zip -r app.ipa Payload
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: BitcoinLiveApp
           path: app.ipa
