@@ -8,7 +8,7 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate Project
-        run: xcodegen generate
+        run: xcodegen -s project.yml
       - name: Build Archive
         run: |
           xcodebuild -project BitcoinLive.xcodeproj -scheme BitcoinLive -sdk iphoneos -configuration Release archive -archivePath build/App.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=""
