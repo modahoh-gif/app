@@ -7,10 +7,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Create and Build Everything
         run: |
-          # 1. إنشاء هيكل المجلدات والملفات تلقائياً
           mkdir -p Sources/BitcoinLive
           
-          # إنشاء ملف BitcoinAttributes.swift
           cat << 'EOF' > Sources/BitcoinLive/BitcoinAttributes.swift
           import ActivityKit
           import Foundation
@@ -25,7 +23,6 @@ jobs:
           }
           EOF
 
-          # إنشاء ملف BitcoinManager.swift
           cat << 'EOF' > Sources/BitcoinLive/BitcoinManager.swift
           import Foundation
           import ActivityKit
@@ -90,22 +87,25 @@ jobs:
           }
           EOF
 
-          # إنشاء ملف Package.swift
+          # تعديل الحزمة لتكون Executable منتجة لملف تنفيذي
           cat << 'EOF' > Package.swift
           // swift-tools-version: 5.8
           import PackageDescription
           let package = Package(
               name: "BitcoinLive",
               platforms: [.iOS(.v16)],
-              products: [.library(name: "BitcoinLive", targets: ["BitcoinLive"])],
-              targets: [.target(name: "BitcoinLive", path: "Sources/BitcoinLive")]
+              products: [
+                  .executable(name: "BitcoinLive", targets: ["BitcoinLive"])
+              ],
+              targets: [
+                  .executableTarget(name: "BitcoinLive", path: "Sources/BitcoinLive")
+              ]
           )
           EOF
 
-          # 2. بناء التطبيق
+          # بناء التطبيق كملف تنفيذي حقيقي
           swift build -c release --sdk $(xcrun --sdk iphoneos --show-sdk-path) -Xswiftc -target -Xswiftc arm64-apple-ios16.2
           
-          # 3. إعداد مجلد الـ IPA وملف الـ Info.plist
           mkdir -p Payload/BitcoinLive.app
           cp -f .build/release/BitcoinLive Payload/BitcoinLive.app/BitcoinLive
           
